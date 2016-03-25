@@ -10,6 +10,13 @@
 using Move = std::tuple<int, int>;
 using Board = char[3][3];
 
+enum class GameType {
+	FAIL          = 0b000,
+	AI_AI         = 0b001,
+	PLAYER_AI     = 0b010,
+	PLAYER_PLAYER = 0b100
+};
+
 void copy(const Board &src, Board &dst) {
 	for (int y = 0; y < 3; ++y)
 		for (int x = 0; x < 3; ++x)
@@ -41,6 +48,12 @@ bool is_filled(const Board &board) {
 			if (board[y][x] == '.')
 				return false;
 	return true;
+}
+
+bool in_bounds(int i) {
+	if (i >= 0 && i < 3)
+		return true;
+	return false;
 }
 
 char winner(const Board &board) {
@@ -115,9 +128,16 @@ void ai_move(Board &board, char ai) {
 			}
 		}
 	}
+	int x, y;
+	do {
+		x = rand() % 3;
+		y = rand() % 3;
+	} while (!in_bounds(x) || !in_bounds(y) || board[y][x] != '.');
+	board[y][x] = ai;
 }
 
 void human_move(Board &board, char human) {
+	std::cout << "Turn of " << human << std::endl;
 	int x, y;
 	do {
 		std::cin >> x >> y;
@@ -125,53 +145,115 @@ void human_move(Board &board, char human) {
 	board[y][x] = human;
 }
 
-int main() {	
-	char ai = 'O';
-	char human = 'X';
+int main(int argc, char **argv) {
+	if (argc != 3) {
+		std::cerr << "Please run program in format: <exe> <p1 type> <p2 type>" << std::endl;
+		std::cerr << "Options for types are: \'ai\' or \'human\'" << std::endl;
+		return -1;
+	}
+	std::cout << argv[1] << " " << argv[2] << std::endl;
+	GameType game_type(GameType::FAIL);
+	if ((argv[1] == std::string("ai") && argv[2] == std::string("human") || (argv[1] == std::string("human") && argv[2] == std::string("ai")))) {
+		game_type = GameType::PLAYER_AI;
+	} else if (argv[1] == std::string("human") && argv[2] == std::string("human")) {
+		game_type = GameType::PLAYER_PLAYER;
+	} else if (argv[1] == std::string("ai") && argv[1] == std::string("ai")) {
+		game_type = GameType::AI_AI;
+	}
+	if (game_type == GameType::FAIL) {
+		std::cerr << "Oops! Something went wrong; perhaps with the player type arguments you passed in. Please try again" << std::endl;
+		return -3;
+	}
+	srand(time(NULL));
+	char p2 = 'O';
+	char p1 = 'X';
 	
 	Board board {{'.','.','.'},{'.','.','.'},{'.','.','.'}};
 	std::cout << to_string(board) << std::endl;
 	
-	while(winner(board) == 'F') {
-		if (is_filled(board)) {
-			break;
+	/** GameType AI vs AI **/
+	if (game_type == GameType::AI_AI) {
+		while(winner(board) == 'F' && !is_filled(board)) {
+			std::cout << to_string(board) << std::endl;
+			ai_move(board, p2);
+			if (winner(board) != 'F') {
+				break;
+			}
+			if (is_filled(board)) {
+				break;
+			}
+			std::cout << to_string(board) << std::endl;
+			ai_move(board, p1);
 		}
 		std::cout << to_string(board) << std::endl;
-		ai_move(board, ai);
-		if (winner(board) != 'F') {
-			break;
+		if (winner(board) == 'F') {
+			std::cout << "No Winner!" << std::endl;	
+		} else if (winner(board) == p1) {
+			std::cout << p1 << " Wins!" << std::endl;
+		} else if (winner(board) == p2) {
+			std::cout << p2 << " Wins!" << std::endl;
 		}
-		std::cout << to_string(board) << std::endl;
-		ai_move(board, human);
 	}
 	
-	// srand(time(NULL));
-	// bool human_start = rand() % 2;
+	/** GameType HUMAN vs AI **/
+	if (game_type == GameType::PLAYER_AI) {
+		bool p1_start = rand() % 2;
+		
+		if (p1_start) {
+			std::cout << "Your Turn!" << std::endl;
+			human_move(board, p1);
+		}
+		
+		while(winner(board) == 'F') {
+			if (is_filled(board)) {
+				break;
+			}
+			std::cout << to_string(board) << std::endl;
+			ai_move(board, p2);
+			if (winner(board) != 'F') {
+				break;
+			}
+			std::cout << to_string(board) << std::endl;
+			human_move(board, p1);
+		}
+		std::cout << to_string(board) << std::endl;
+		if (winner(board) == 'F') {
+			std::cout << "No Winner!" << std::endl;	
+		} else if (winner(board) == p1) {
+			std::cout << p1 << " Wins!" << std::endl;
+		} else if (winner(board) == p2) {
+			std::cout << p2 << " Wins!" << std::endl;
+		}
+	}
 	
-	// if (human_start) {
-	// 	std::cout << "Your Turn!" << std::endl;
-	// 	human_move(board, human);
-	// }
-	
-	// while(winner(board) == 'F') {
-	// 	if (is_filled(board)) {
-	// 		break;
-	// 	}
-	// 	std::cout << to_string(board) << std::endl;
-	// 	ai_move(board, ai);
-	// 	if (winner(board) != 'F') {
-	// 		break;
-	// 	}
-	// 	std::cout << to_string(board) << std::endl;
-	// 	human_move(board, human);
-	// }
-	// std::cout << to_string(board) << std::endl;
-	// if (winner(board) == 'F') {
-	// 	std::cout << "No Winner!" << std::endl;	
-	// } else if (winner(board) == human) {
-	// 	std::cout << "Human Player Wins!" << std::endl;
-	// } else if (winner(board) == ai) {
-	// 	std::cout << "AI Wins!" << std::endl;
-	// }
+	/** GameType HUMAN vs HUMAN **/
+	if (game_type == GameType::PLAYER_PLAYER) {
+		bool p1_start = rand() % 2;
+		
+		if (p1_start) {
+			human_move(board, p1);
+		}
+		
+		while(winner(board) == 'F') {
+			if (is_filled(board)) {
+				break;
+			}
+			std::cout << to_string(board) << std::endl;
+			human_move(board, p2);
+			if (winner(board) != 'F') {
+				break;
+			}
+			std::cout << to_string(board) << std::endl;
+			human_move(board, p1);
+		}
+		std::cout << to_string(board) << std::endl;
+		if (winner(board) == 'F') {
+			std::cout << "No Winner!" << std::endl;	
+		} else if (winner(board) == p1) {
+			std::cout << "p1 Player Wins!" << std::endl;
+		} else if (winner(board) == p2) {
+			std::cout << "p2 Wins!" << std::endl;
+		}
+	}
 	return 0;
 }
